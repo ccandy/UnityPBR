@@ -10,6 +10,14 @@
 #define UNITY_MATRIX_VP unity_MatrixVP
 #define UNITY_MATRIX_P glstate_matrix_projection
 
+float Pow2(float n)
+{
+    return n*n;
+}
 
+float Pow3(float n)
+{
+    return n*n*n;
+}
 
 #endif
