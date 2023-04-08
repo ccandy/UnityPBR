@@ -2,7 +2,7 @@ Shader "PBR/Lit"
 {
     Properties
     {
-        _MainTex ("Texture", 2D) = "white" {}
+        _BaseMap ("Texture", 2D) = "white" {}
         _Color("Color", color) = (1,1,1)
     }
     SubShader
@@ -16,7 +16,7 @@ Shader "PBR/Lit"
             #pragma vertex LitPassVertex
             #pragma fragment LitPassFragment
             
-            #include "Assets/Shaders/ShaderLib/Lit.hlsl"
+            #include "Assets/Shaders/ShaderLib/LitPass.hlsl"
             ENDHLSL
         }
     }
