@@ -11,4 +11,16 @@ struct Surface {
     float smoothness;
 };
 
+Surface GetSurface(float3 color, float3 worldPos, float3 normal, float metallic, float smoothness)
+{
+    Surface surface;
+    surface.color = color;
+    surface.viewDirection = normalize(_WorldSpaceCameraPos - worldPos);
+    surface.metallic = metallic;
+    surface.smoothness = smoothness;
+    surface.normal = normal;
+    
+    return surface;
+}
+
 #endif

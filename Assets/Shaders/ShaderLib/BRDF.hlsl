@@ -1,58 +1,49 @@
-Shader "Unlit/BRDF"
-{
-    Properties
-    {
-        _MainTex ("Texture", 2D) = "white" {}
-    }
-    SubShader
-    {
-        Tags { "RenderType"="Opaque" }
-        LOD 100
+#ifndef MYRP_BRDF_INCLUDED
+#define MYRP_BRDF_INCLUDED
 
-        Pass
-        {
-            CGPROGRAM
-            #pragma vertex vert
-            #pragma fragment frag
-            // make fog work
-            #pragma multi_compile_fog
+struct BRDF {
+    float3 diffuse;
+    float3 specular;
+    float roughness;
+};
 
-            #include "UnityCG.cginc"
+#define MIN_REFLECTIVITY 0.04 //F0
 
-            struct appdata
-            {
-                float4 vertex : POSITION;
-                float2 uv : TEXCOORD0;
-            };
-
-            struct v2f
-            {
-                float2 uv : TEXCOORD0;
-                UNITY_FOG_COORDS(1)
-                float4 vertex : SV_POSITION;
-            };
-
-            sampler2D _MainTex;
-            float4 _MainTex_ST;
-
-            v2f vert (appdata v)
-            {
-                v2f o;
-                o.vertex = UnityObjectToClipPos(v.vertex);
-                o.uv = TRANSFORM_TEX(v.uv, _MainTex);
-                UNITY_TRANSFER_FOG(o,o.vertex);
-                return o;
-            }
-
-            fixed4 frag (v2f i) : SV_Target
-            {
-                // sample the texture
-                fixed4 col = tex2D(_MainTex, i.uv);
-                // apply fog
-                UNITY_APPLY_FOG(i.fogCoord, col);
-                return col;
-            }
-            ENDCG
-        }
-    }
+float OneMinusReflectivity (float metallic) {
+    float range = 1.0 - MIN_REFLECTIVITY;
+    return range - metallic * range;
 }
+
+BRDF GetBRDF (Surface surface, bool applyAlphaToDiffuse = false) {
+    BRDF brdf;
+    float oneMinusReflectivity = OneMinusReflectivity(surface.metallic);
+
+    brdf.diffuse = surface.color * oneMinusReflectivity;
+    if (applyAlphaToDiffuse) {
+        brdf.diffuse *= surface.alpha;
+    }
+    brdf.specular = lerp(MIN_REFLECTIVITY, surface.color, surface.metallic);
+
+    float perceptualRoughness =
+        PerceptualSmoothnessToPerceptualRoughness(surface.smoothness);
+    brdf.roughness = PerceptualRoughnessToRoughness(perceptualRoughness);
+    return brdf;
+}
+
+float SpecularStrength (Surface surface, BRDF brdf, Light light) {
+    float3 h = SafeNormalize(light.direction + surface.viewDirection);
+    float nh2 = Pow2(saturate(dot(surface.normal, h)));
+    float lh2 = Pow2(saturate(dot(light.direction, h)));
+    float r2 = Pow2(brdf.roughness);
+    float d2 = Pow2(nh2 * (r2 - 1.0) + 1.00001);
+    float normalization = brdf.roughness * 4.0 + 2.0;
+    return r2 / (d2 * max(0.1, lh2) * normalization);
+}
+
+float3 DirectBRDF (Surface surface, BRDF brdf, Light light) {
+    return SpecularStrength(surface, brdf, light) * brdf.specular + brdf.diffuse;
+}
+
+
+#endif
+
